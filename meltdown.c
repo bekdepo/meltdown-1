@@ -92,7 +92,7 @@ void main()
             clflush(&meltdown_buf[i * PAGE_SIZE]); // improves cache side effects detection
         }
 
-        if(sigsetjmp(jbuf, !0) == 0) {
+        if (sigsetjmp(jbuf, !0) == 0) {
             int *ptr = NULL;
             *ptr = 1; // force SIGSEGV by setting value by NULL pointer (even when testing with local addrress)
 
