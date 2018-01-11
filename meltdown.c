@@ -9,9 +9,6 @@
 #define PAGE_SIZE_SHIFT_STR "0xC"
 #define PAGE_SIZE           (1 << PAGE_SIZE_SHIFT)
 
-static unsigned long ticks[256];
-static jmp_buf jbuf;
-
 __attribute__((always_inline))
 inline unsigned long get_access_ticks(const char *addr)
 {
@@ -60,6 +57,9 @@ inline void clflush(const char *address)
         : "r" (address)
         :            );
 }
+
+static unsigned long ticks[256];
+static jmp_buf jbuf;
 
 static void sigsegv_handler(int signo)
 {
